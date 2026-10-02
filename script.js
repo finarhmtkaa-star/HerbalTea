@@ -402,8 +402,500 @@ function viewProducts(filter = "") {
   let searchInfo = "";
   if (filter.trim()) {
     const q = filter.toLowerCase();
-    list = PRODUCTS.filter(p => p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q));
+    list = PRODUCTS.filter(p => p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q) || p.ingredients.join(" ").toLowerCase().includes(q));
     if (list.length === 0) {
       return `<section class="page-head container"><h1>Produk Kami</h1><p>Pilih varian rosella favoritmu</p></section>
       <div class="container"><div class="search-info">Hasil pencarian untuk <strong>"${filter}"</strong></div>
-      <div class="empty-state"><div class="ico">🔍</div><h3>Produk tidak ditemukan.</h3><p>Coba kata kunci lain.</p><a
+      <div class="empty-state"><div class="ico">🔍</div><h3>Produk tidak ditemukan.</h3><p>Coba kata kunci lain seperti "original" atau "mojito".</p><a href="#/produk" class="btn btn-primary" data-link>Lihat Semua Produk</a></div></div>`;
+    }
+    searchInfo = `<div class="search-info">Hasil pencarian untuk <strong>"${filter}"</strong> — ${list.length} produk ditemukan</div>`;
+  }
+  return `
+  <section class="page-head container"><h1>Produk Kami</h1><p>Pilih varian rosella favoritmu</p></section>
+  <div class="container" style="padding-bottom:60px">
+    ${searchInfo}
+    <div class="product-grid">${list.map(p => productCard(p)).join("")}</div>
+  </div>`;
+}
+
+function viewDetail(id) {
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return `<div class="container"><div class="empty-state"><h3>Produk tidak ditemukan</h3><a href="#/produk" class="btn btn-primary" data-link>Lihat Produk</a></div></div>`;
+  return `
+  <div class="container">
+    <div style="padding:20px 0 0"><a href="#/produk" class="btn btn-ghost btn-sm" data-link>← Kembali ke Produk</a></div>
+    <div class="detail-grid">
+      <div class="detail-visual" id="detailVisual" style="cursor:zoom-in">${productSVG(p.visual, 640)}</div>
+      <div class="detail-info">
+        <span class="thumb-tag" style="position:static;display:inline-block;margin-bottom:12px">${p.tag}</span>
+        <h1>${p.name}</h1>
+        <p class="sub">"${p.tagline}"</p>
+        <div class="product-meta" style="margin-bottom:8px"><span class="rating">★ ${p.rating} <span>(${p.reviews} ulasan)</span></span></div>
+        <div class="detail-price">${rupiah(p.price)} <small>/ ${p.size}</small></div>
+        <div class="info-list">
+          <div><div class="lbl">Ukuran</div><div class="val">${p.size}</div></div>
+          <div><div class="lbl">Kemasan</div><div class="val">${p.packaging}</div></div>
+        </div>
+        <div class="detail-section"><h3>📝 Deskripsi</h3><p>${p.desc}</p></div>
+        <div class="detail-section"><h3>🌿 Komposisi Utama</h3><div class="chips">${p.ingredients.map(i => `<span class="chip">${i}</span>`).join("")}</div></div>
+        <div class="detail-section"><h3>ℹ️ Informasi Produk</h3><p>Disajikan dingin untuk pengalaman terbaik. Simpan di tempat sejuk dan hindari sinar matahari langsung. Habiskan segera setelah dibuka.</p></div>
+        <div class="detail-section">
+          <h3>Jumlah</h3>
+          <div class="qty-row" style="align-items:center;margin-top:8px">
+            <div class="qty-selector">
+              <button data-action="qty-minus-detail" data-id="${p.id}">−</button>
+              <span class="qty-val" id="detailQty">1</span>
+              <button data-action="qty-plus-detail" data-id="${p.id}">+</button>
+            </div>
+            <div class="subtotal-line">Subtotal: <strong id="detailSub">${rupiah(p.price)}</strong></div>
+          </div>
+        </div>
+        <div class="detail-actions">
+          <div class="row">
+            <button class="btn btn-ghost" data-action="toggle-fav-detail" data-id="${p.id}">${isFav(p.id) ? '♥ Favorit' : '♡ Favorit'}</button>
+          </div>
+          <button class="btn btn-sage btn-block" data-action="add-to-cart-detail" data-id="${p.id}">🛒 Tambah ke Keranjang</button>
+          <button class="btn btn-primary btn-block" data-action="buy-now" data-id="${p.id}">⚡ Beli Sekarang</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function viewCart() {
+  if (cart.length === 0) {
+    return `<section class="page-head container"><h1>Keranjang</h1><p>Keranjang belanjamu</p></section>
+    <div class="container"><div class="empty-state"><div class="ico">🛒</div><h3>Keranjangmu masih kosong</h3><p>Yuk pilih minuman rosella favoritmu dulu!</p><a href="#/produk" class="btn btn-primary" data-link>Mulai Belanja</a></div></div>`;
+  }
+  const total = cartTotal();
+  return `
+  <section class="page-head container"><h1>Keranjang</h1><p>${cartCount()} item di keranjangmu</p></section>
+  <div class="container cart-layout">
+    <div>
+      ${cart.map(i => {
+        const p = PRODUCTS.find(x => x.id === i.id);
+        if (!p) return "";
+        const sub = p.price * i.qty;
+        return `
+        <div class="cart-item">
+          <div class="cart-item-img" data-action="open-detail" data-id="${p.id}" style="cursor:pointer">${productSVG(p.visual, 180)}</div>
+          <div class="cart-item-info">
+            <h3>${p.name}</h3>
+            <div class="meta">${p.size} · ${rupiah(p.price)}/item</div>
+            <div class="cart-item-bottom">
+              <div class="qty-selector">
+                <button data-action="cart-minus" data-id="${p.id}">−</button>
+                <span class="qty-val">${i.qty}</span>
+                <button data-action="cart-plus" data-id="${p.id}">+</button>
+              </div>
+              <div class="cart-item-subtotal">Subtotal<small>${i.qty} × ${rupiah(p.price)}</small>${rupiah(sub)}</div>
+              <button class="remove-btn" data-action="cart-remove" data-id="${p.id}">🗑️ Hapus</button>
+            </div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+    <div>
+      <div class="cart-summary">
+        <h3>Ringkasan Belanja</h3>
+        ${cart.map(i => {
+          const p = PRODUCTS.find(x => x.id === i.id);
+          return `<div class="summary-row"><span>${p.name} × ${i.qty}</span><span>${rupiah(p.price * i.qty)}</span></div>`;
+        }).join("")}
+        <div class="summary-row total"><span>Total Belanja</span><span class="amt">${rupiah(total)}</span></div>
+        <button class="btn btn-primary btn-block" style="margin-top:18px" data-action="go-checkout">Checkout Sekarang →</button>
+        <a href="#/produk" class="btn btn-ghost btn-block" style="margin-top:10px" data-link>Lanjut Belanja</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function viewCheckout() {
+  if (cart.length === 0) {
+    return `<div class="container"><div class="empty-state"><div class="ico">🛒</div><h3>Keranjang kosong</h3><a href="#/produk" class="btn btn-primary" data-link>Mulai Belanja</a></div></div>`;
+  }
+  const total = cartTotal();
+  return `
+  <section class="page-head container"><h1>Checkout</h1><p>Lengkapi data pesananmu</p></section>
+  <div class="container checkout-grid">
+    <div>
+      <div class="form-card">
+        <h3>👤 Data Pembeli</h3>
+        <div class="form-group" id="fg-nama">
+          <label>Nama Lengkap <span class="req">*</span></label>
+          <input type="text" id="inpNama" placeholder="Contoh: Salsabila Putri" autocomplete="name">
+          <div class="err">Nama wajib diisi.</div>
+        </div>
+        <div class="form-group" id="fg-wa">
+          <label>Nomor WhatsApp <span class="req">*</span></label>
+          <input type="tel" id="inpWa" placeholder="Contoh: 081234567890" inputmode="numeric" autocomplete="tel">
+          <div class="err">Nomor WhatsApp wajib diisi (min. 9 digit angka).</div>
+        </div>
+        <div class="form-group" id="fg-alamat">
+          <label>Alamat <span class="req">*</span></label>
+          <textarea id="inpAlamat" placeholder="Tulis alamat lengkap pengiriman / pengambilan..."></textarea>
+          <div class="err">Alamat wajib diisi.</div>
+        </div>
+      </div>
+      <div class="form-card">
+        <h3>💳 Metode Pembayaran</h3>
+        <div class="pay-options">
+          <label class="pay-option"><input type="radio" name="payment" value="Tunai" checked><span class="pay-ico">💵</span><span class="pay-lbl">Tunai</span></label>
+          <label class="pay-option"><input type="radio" name="payment" value="QRIS"><span class="pay-ico">📱</span><span class="pay-lbl">QRIS</span></label>
+        </div>
+      </div>
+      <div class="form-card">
+        <h3>📝 Catatan (Opsional)</h3>
+        <div class="form-group"><textarea id="inpCatatan" placeholder="Contoh: Pesanan diambil pukul 16.00."></textarea></div>
+      </div>
+    </div>
+    <div>
+      <div class="cart-summary">
+        <h3>Pesananmu</h3>
+        ${cart.map(i => {
+          const p = PRODUCTS.find(x => x.id === i.id);
+          return `<div class="checkout-mini-item"><div class="cmi-img">${productSVG(p.visual, 120)}</div><div class="cmi-info"><h4>${p.name}</h4><div class="q">${i.qty} × ${rupiah(p.price)}</div></div><div class="cmi-sub">${rupiah(p.price * i.qty)}</div></div>`;
+        }).join("")}
+        <div class="summary-row total" style="margin-top:12px"><span>Total</span><span class="amt">${rupiah(total)}</span></div>
+        <button class="btn btn-primary btn-block" style="margin-top:18px" id="btnSubmitOrder" data-action="submit-order">Buat Pesanan</button>
+        <a href="#/keranjang" class="btn btn-ghost btn-block" style="margin-top:10px" data-link>← Kembali ke Keranjang</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function viewSuccess(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return `<div class="container"><div class="empty-state"><h3>Pesanan tidak ditemukan</h3><a href="#/pesanan" class="btn btn-primary" data-link>Lihat Pesanan</a></div></div>`;
+  return `
+  <div class="container">
+    <div class="success-wrap">
+      <div class="success-ico">🎉</div>
+      <h1>Pesanan Berhasil Dibuat!</h1>
+      <p class="sub">Terima kasih, ${order.nama}! Pesananmu sudah kami terima.</p>
+      <div class="order-id-box"><div class="lbl">ID Pesanan</div><div class="id">${order.id}</div></div>
+      <div class="success-detail">
+        <div class="row"><span class="k">Total Pembayaran</span><span class="v">${rupiah(order.total)}</span></div>
+        <div class="row"><span class="k">Metode Pembayaran</span><span class="v">${order.pembayaran}</span></div>
+        <div class="row"><span class="k">Status</span><span class="v"><span class="status-pill waiting">Menunggu Konfirmasi</span></span></div>
+      </div>
+      <h3 style="font-family:'Fraunces',serif;font-size:1.05rem;margin-bottom:12px;text-align:left">Ringkasan Pesanan</h3>
+      <div style="text-align:left;margin-bottom:24px">
+        ${order.items.map(it => `<div class="summary-row"><span>${it.nama} × ${it.qty}</span><span>${rupiah(it.subtotal)}</span></div>`).join("")}
+      </div>
+      <a href="#/pesanan" class="btn btn-primary btn-block" data-link>📋 Lihat Pesanan Saya</a>
+      <a href="#/produk" class="btn btn-ghost btn-block" style="margin-top:10px" data-link>Kembali Belanja</a>
+    </div>
+  </div>`;
+}
+
+/* ============ VIEW: ORDERS (dengan tombol refresh) ============ */
+function viewOrders() {
+  if (orders.length === 0) {
+    return `<section class="page-head container"><h1>Pesanan Saya</h1><p>Riwayat pesananmu</p></section>
+    <div class="container"><div class="empty-state"><div class="ico">📋</div><h3>Belum ada pesanan</h3><p>Yuk buat pesanan pertamamu!</p><a href="#/produk" class="btn btn-primary" data-link>Mulai Belanja</a></div></div>`;
+  }
+  const statusMap = {"Menunggu Konfirmasi":"waiting","Diproses":"process","Siap Diambil":"ready","Selesai":"done","Dibatalkan":"cancel"};
+  const sorted = [...orders].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  return `
+  <section class="page-head container"><h1>Pesanan Saya</h1><p>${orders.length} pesanan</p></section>
+  <div class="container" style="padding-bottom:60px">
+    <div style="text-align:center;margin-bottom:20px">
+      <button class="btn btn-sage btn-sm" id="btnRefreshStatus" data-action="refresh-status">🔄 Cek Status Terbaru</button>
+      <p style="font-size:.78rem;color:var(--ink-soft);margin-top:8px">Klik untuk sinkronkan status dengan toko</p>
+    </div>
+    ${sorted.map(o => `
+      <div class="order-card" id="order-${o.id}">
+        <div class="order-head">
+          <div><div class="oid">${o.id}</div><div class="odate">${o.tanggal} · ${o.jam}</div></div>
+          <span class="status-pill ${statusMap[o.status] || 'waiting'}" id="status-${o.id}">${o.status}</span>
+        </div>
+        <div class="order-items">
+          ${o.items.map(it => {
+            const p = PRODUCTS.find(x => x.id === it.id);
+            return `<div class="order-line"><div class="oli-img">${p ? productSVG(p.visual, 100) : ""}</div><div class="oli-info"><h4>${it.nama}</h4><div class="q">${it.qty} × ${rupiah(it.harga)}</div></div><div class="oli-price">${rupiah(it.subtotal)}</div></div>`;
+          }).join("")}
+        </div>
+        <div class="order-foot">
+          <div>
+            <div style="font-size:.78rem;color:var(--ink-soft)">Metode: <strong>${o.pembayaran}</strong></div>
+            ${o.catatan ? `<div style="font-size:.78rem;color:var(--ink-soft)">Catatan: ${o.catatan}</div>` : ""}
+          </div>
+          <div class="ototal">Total <span class="amt">${rupiah(o.total)}</span></div>
+        </div>
+      </div>
+    `).join("")}
+  </div>`;
+}
+
+/* ============ REFRESH STATUS ============ */
+async function refreshStatus() {
+  if (orders.length === 0) return;
+  const btn = document.getElementById("btnRefreshStatus");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner" style="border-color:rgba(255,255,255,.4);border-top-color:#fff"></span> Mengecek...`;
+  }
+  let updated = 0, failed = 0;
+  const statusMap = {"Menunggu Konfirmasi":"waiting","Diproses":"process","Siap Diambil":"ready","Selesai":"done","Dibatalkan":"cancel"};
+  for (const order of orders) {
+    try {
+      const url = `${GOOGLE_SCRIPT_URL}?orderId=${encodeURIComponent(order.id)}`;
+      const res = await fetch(url, { method: "GET" });
+      const json = await res.json();
+      if (json.status === "ok" && json.statusPesanan) {
+        if (order.status !== json.statusPesanan) { order.status = json.statusPesanan; updated++; }
+        const statusEl = document.getElementById("status-" + order.id);
+        if (statusEl) {
+          statusEl.className = `status-pill ${statusMap[json.statusPesanan] || 'waiting'}`;
+          statusEl.textContent = json.statusPesanan;
+        }
+      } else { failed++; }
+    } catch (err) { console.error("Gagal cek status " + order.id, err); failed++; }
+  }
+  Store.set("orders", orders);
+  if (btn) { btn.disabled = false; btn.innerHTML = "🔄 Cek Status Terbaru"; }
+  if (updated > 0) toast(`${updated} status pesanan diperbarui!`, "success", "✅");
+  else if (failed > 0) toast(`Gagal cek status. Coba lagi ya.`, "error", "⚠️");
+  else toast("Semua status sudah yang terbaru.", "info", "✓");
+}
+
+function viewProfile() {
+  return `
+  <div class="container">
+    <div class="profile-hero">
+      <div class="profile-avatar">🌺</div>
+      <h1>ROCÈA Herbal Tea</h1>
+      <p class="tag">"A Little Sip of Nature"</p>
+    </div>
+    <div class="profile-menu">
+      <div class="profile-menu-item" data-action="nav" data-to="#/favorit"><div class="pmi-ico">♡</div><div class="pmi-txt"><h4>Favorit</h4><p>${favorites.length} produk tersimpan</p></div><span class="pmi-arrow">›</span></div>
+      <div class="profile-menu-item" data-action="nav" data-to="#/pesanan"><div class="pmi-ico">📋</div><div class="pmi-txt"><h4>Pesanan Saya</h4><p>${orders.length} pesanan</p></div><span class="pmi-arrow">›</span></div>
+      <div class="profile-menu-item" data-action="nav" data-to="#/faq"><div class="pmi-ico">❓</div><div class="pmi-txt"><h4>Bantuan / FAQ</h4><p>Pertanyaan yang sering diajukan</p></div><span class="pmi-arrow">›</span></div>
+      <div class="profile-menu-item" data-action="nav" data-to="#/kontak"><div class="pmi-ico">📱</div><div class="pmi-txt"><h4>Hubungi Kami</h4><p>Customer service ROCÈA</p></div><span class="pmi-arrow">›</span></div>
+      <a class="profile-menu-item" href="https://www.instagram.com/rocea_herbaltea/" target="_blank" rel="noopener"><div class="pmi-ico">📷</div><div class="pmi-txt"><h4>Instagram</h4><p>@rocea_herbaltea</p></div><span class="pmi-arrow">›</span></a>
+    </div>
+  </div>`;
+}
+
+function viewFavorites() {
+  if (favorites.length === 0) {
+    return `<section class="page-head container"><h1>Favorit</h1><p>Produk yang kamu sukai</p></section>
+    <div class="container"><div class="empty-state"><div class="ico">♡</div><h3>Belum ada favorit</h3><p>Tekan ikon hati pada produk untuk menyimpannya di sini.</p><a href="#/produk" class="btn btn-primary" data-link>Lihat Produk</a></div></div>`;
+  }
+  const favProducts = PRODUCTS.filter(p => favorites.includes(p.id));
+  return `<section class="page-head container"><h1>Favorit</h1><p>${favProducts.length} produk tersimpan</p></section>
+  <div class="container" style="padding-bottom:60px"><div class="fav-grid">${favProducts.map(p => productCard(p)).join("")}</div></div>`;
+}
+
+function viewFAQ() {
+  const faqs = [
+    {q:"Apakah ROCÈA menggunakan bahan alami?", a:"Ya! ROCÈA menggunakan bunga rosella pilihan sebagai bahan utama. Untuk ROCÈA Original kami menambahkan jeruk nipis segar, sedangkan ROCÈA Mojito menggunakan Sprite untuk sensasi sparkling."},
+    {q:"Berapa lama pesanan saya siap?", a:"Setelah pesanan diterima, kami akan memprosesnya. Status akan berubah menjadi 'Diproses' lalu 'Siap Diambil'. Kamu bisa cek status di halaman Pesanan Saya."},
+    {q:"Metode pembayaran apa saja yang tersedia?", a:"Kami menerima pembayaran Tunai dan QRIS. Silakan pilih saat checkout."},
+    {q:"Apakah bisa pesan dalam jumlah banyak?", a:"Tentu! Untuk pemesanan dalam jumlah besar (acara, catering, dll), silakan hubungi customer service kami melalui WhatsApp."},
+    {q:"Bagaimana cara menyimpan ROCÈA?", a:"Simpan di tempat sejuk dan hindari sinar matahari langsung. Untuk pengalaman terbaik, habiskan segera setelah dibuka."},
+    {q:"Apakah rosella aman untuk semua orang?", a:"Rosella umumnya aman dikonsumsi. Namun, manfaat dapat berbeda pada setiap orang dan tidak menggantikan obat atau saran dari tenaga kesehatan."},
+  ];
+  return `
+  <section class="page-head container"><h1>Bantuan / FAQ</h1><p>Pertanyaan yang sering diajukan</p></section>
+  <div class="container" style="max-width:760px;padding-bottom:60px">
+    ${faqs.map((f,i) => `<div class="faq-item" data-faq="${i}"><div class="faq-q" data-action="toggle-faq" data-idx="${i}"><span>${f.q}</span><span class="plus">+</span></div><div class="faq-a">${f.a}</div></div>`).join("")}
+    <div style="text-align:center;margin-top:32px"><p style="color:var(--ink-soft);margin-bottom:16px">Masih ada pertanyaan?</p><a href="#/kontak" class="btn btn-primary" data-link>Hubungi CS Kami</a></div>
+  </div>`;
+}
+
+function viewContact() {
+  const numbers = [
+    {label:"CS 1", num:"0823-3723-7718", wa:"6282337237718"},
+    {label:"CS 2", num:"0856-0744-8226", wa:"6285607448226"},
+    {label:"CS 3", num:"0878-9733-8641", wa:"6287897338641"},
+    {label:"CS 4", num:"0857-4615-1290", wa:"6285746151290"},
+  ];
+  return `
+  <section class="page-head container"><h1>Hubungi Kami</h1><p>Kami siap membantu kamu 🌸</p></section>
+  <div class="container" style="max-width:640px;padding-bottom:60px">
+    <h3 style="font-size:1rem;margin-bottom:14px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:1.5px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700">WhatsApp Customer Service</h3>
+    <div class="contact-list" style="margin-bottom:32px">
+      ${numbers.map(n => `<a class="contact-item" href="https://wa.me/${n.wa}" target="_blank" rel="noopener"><div class="ci-ico">💬</div><div class="ci-txt"><h4>${n.label} · ${n.num}</h4><p>Klik untuk chat via WhatsApp</p></div><span style="color:var(--ink-soft)">›</span></a>`).join("")}
+    </div>
+    <h3 style="font-size:1rem;margin-bottom:14px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:1.5px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700">Media Sosial</h3>
+    <div class="contact-list">
+      <a class="contact-item ig" href="https://www.instagram.com/rocea_herbaltea/" target="_blank" rel="noopener"><div class="ci-ico">📷</div><div class="ci-txt"><h4>Instagram ROCÈA</h4><p>@rocea_herbaltea</p></div><span style="color:var(--ink-soft)">›</span></a>
+    </div>
+    <div class="disclaimer" style="margin-top:32px">💡 WhatsApp hanya digunakan sebagai customer service. Untuk memesan, silakan gunakan fitur checkout di website ini.</div>
+  </div>`;
+}
+
+/* ============ EVENT BINDING ============ */
+function bindEvents() {
+  document.querySelectorAll("[data-action]").forEach(el => el.addEventListener("click", handleAction));
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.oninput = (e) => {
+      const q = e.target.value;
+      if (getRoute() !== "/produk") navigate("/produk");
+      setTimeout(() => {
+        const grid = document.querySelector(".product-grid");
+        if (grid) {
+          const newHTML = viewProducts(q);
+          const temp = document.createElement("div");
+          temp.innerHTML = newHTML;
+          const newGrid = temp.querySelector(".product-grid");
+          if (newGrid) grid.innerHTML = newGrid.innerHTML;
+          else app.innerHTML = newHTML;
+          const info = temp.querySelector(".search-info");
+          const existingInfo = document.querySelector(".search-info");
+          if (info && !existingInfo) grid.parentNode.insertBefore(info, grid);
+          else if (info && existingInfo) existingInfo.outerHTML = info.outerHTML;
+          else if (!info && existingInfo) existingInfo.remove();
+          bindEvents();
+        }
+      }, 0);
+    };
+  }
+  const visual = document.getElementById("detailVisual");
+  if (visual) {
+    visual.onclick = () => {
+      const svg = visual.querySelector("svg");
+      if (svg) {
+        const lb = document.getElementById("lightbox");
+        const lbImg = document.getElementById("lbImg");
+        const svgData = new XMLSerializer().serializeToString(svg);
+        lbImg.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+        lb.classList.add("show");
+      }
+    };
+  }
+}
+
+document.getElementById("lbClose").onclick = () => document.getElementById("lightbox").classList.remove("show");
+document.getElementById("lightbox").onclick = (e) => { if (e.target.id === "lightbox") e.currentTarget.classList.remove("show"); };
+
+/* ============ ACTION HANDLER ============ */
+function handleAction(e) {
+  const el = e.currentTarget;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+  switch (action) {
+    case "open-detail": navigate("/detail/" + id); break;
+    case "toggle-fav": e.stopPropagation(); toggleFav(id); el.classList.toggle("active", isFav(id)); el.textContent = isFav(id) ? "♥" : "♡"; break;
+    case "toggle-fav-detail": toggleFav(id); el.innerHTML = isFav(id) ? '♥ Favorit' : '♡ Favorit'; break;
+    case "qty-plus-card": {
+      const qEl = document.getElementById("cardQty-" + id);
+      let q = parseInt(qEl.textContent, 10) + 1;
+      qEl.textContent = q;
+      const p = PRODUCTS.find(x => x.id === id);
+      document.getElementById("cardSub-" + id).innerHTML = `= <strong>${rupiah(p.price * q)}</strong>`;
+      break;
+    }
+    case "qty-minus-card": {
+      const qEl = document.getElementById("cardQty-" + id);
+      let q = parseInt(qEl.textContent, 10) - 1;
+      if (q < 1) q = 1;
+      qEl.textContent = q;
+      const p = PRODUCTS.find(x => x.id === id);
+      document.getElementById("cardSub-" + id).innerHTML = `= <strong>${rupiah(p.price * q)}</strong>`;
+      break;
+    }
+    case "add-to-cart-card": {
+      const qEl = document.getElementById("cardQty-" + id);
+      const q = parseInt(qEl.textContent, 10);
+      addToCart(id, q);
+      qEl.textContent = "1";
+      const p = PRODUCTS.find(x => x.id === id);
+      document.getElementById("cardSub-" + id).innerHTML = `= <strong>${rupiah(p.price)}</strong>`;
+      break;
+    }
+    case "qty-plus-detail": {
+      const qEl = document.getElementById("detailQty");
+      let q = parseInt(qEl.textContent, 10) + 1;
+      qEl.textContent = q;
+      const p = PRODUCTS.find(x => x.id === id);
+      document.getElementById("detailSub").textContent = rupiah(p.price * q);
+      break;
+    }
+    case "qty-minus-detail": {
+      const qEl = document.getElementById("detailQty");
+      let q = parseInt(qEl.textContent, 10) - 1;
+      if (q < 1) q = 1;
+      qEl.textContent = q;
+      const p = PRODUCTS.find(x => x.id === id);
+      document.getElementById("detailSub").textContent = rupiah(p.price * q);
+      break;
+    }
+    case "add-to-cart-detail": { const qEl = document.getElementById("detailQty"); const q = parseInt(qEl.textContent, 10); addToCart(id, q); break; }
+    case "buy-now": { const qEl = document.getElementById("detailQty"); const q = parseInt(qEl.textContent, 10); addToCart(id, q); navigate("/keranjang"); break; }
+    case "cart-plus": setQty(id, (cart.find(i => i.id === id)?.qty || 1) + 1); render(); break;
+    case "cart-minus": setQty(id, (cart.find(i => i.id === id)?.qty || 1) - 1); render(); break;
+    case "cart-remove": removeFromCart(id); render(); break;
+    case "go-checkout": navigate("/checkout"); break;
+    case "nav": navigate(el.dataset.to.replace(/^#/, "")); break;
+    case "toggle-faq": el.closest(".faq-item").classList.toggle("open"); break;
+    case "refresh-status": refreshStatus(); break;
+    case "submit-order": submitOrder(el); break;
+  }
+}
+
+/* ============ SUBMIT ORDER ============ */
+async function submitOrder(btn) {
+  const nama = document.getElementById("inpNama").value.trim();
+  const wa = document.getElementById("inpWa").value.trim();
+  const alamat = document.getElementById("inpAlamat").value.trim();
+  const catatan = document.getElementById("inpCatatan").value.trim();
+  const pembayaran = document.querySelector('input[name="payment"]:checked').value;
+  let valid = true;
+  const check = (id, condition) => {
+    const fg = document.getElementById("fg-" + id);
+    if (!condition) { fg.classList.add("invalid"); valid = false; } else { fg.classList.remove("invalid"); }
+  };
+  check("nama", nama.length > 0);
+  check("wa", wa.replace(/\D/g, "").length >= 9);
+  check("alamat", alamat.length > 0);
+  if (!valid) { toast("Mohon lengkapi data yang wajib diisi.", "error", "⚠️"); return; }
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Mengirim pesanan...`;
+  const now = new Date();
+  const tanggal = now.toLocaleDateString("id-ID", {day:"2-digit", month:"2-digit", year:"numeric"});
+  const jam = now.toLocaleTimeString("id-ID", {hour:"2-digit", minute:"2-digit"});
+  const orderId = generateOrderId();
+  const items = cart.map(i => {
+    const p = PRODUCTS.find(x => x.id === i.id);
+    return { id: p.id, nama: p.name, qty: i.qty, harga: p.price, subtotal: p.price * i.qty };
+  });
+  const total = items.reduce((s, it) => s + it.subtotal, 0);
+  const sheetRows = items.map(it => ({
+    "ID Pesanan": orderId, "Tanggal": tanggal, "Jam": jam, "Nama": nama, "No. WhatsApp": wa,
+    "Alamat": alamat, "Produk": it.nama, "Jumlah": it.qty, "Harga Satuan": it.harga,
+    "Subtotal": it.subtotal, "Total": total, "Pembayaran": pembayaran, "Catatan": catatan,
+    "Status": "Menunggu Konfirmasi"
+  }));
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ orderId, rows: sheetRows, ...sheetRows[0] })
+    });
+    const order = {
+      id: orderId, timestamp: now.toISOString(), tanggal, jam, nama, wa, alamat,
+      items, total, pembayaran, catatan, status: "Menunggu Konfirmasi"
+    };
+    orders.push(order);
+    saveOrders();
+    cart = [];
+    saveCart();
+    toast("Pesanan berhasil dikirim!", "success", "🎉");
+    navigate("/success/" + orderId);
+  } catch (err) {
+    console.error(err);
+    toast("Gagal mengirim pesanan. Periksa koneksi internetmu dan coba lagi.", "error", "⚠️");
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+/* ============ INIT ============ */
+window.addEventListener("hashchange", render);
+window.addEventListener("DOMContentLoaded", () => { updateBadges(); render(); });
+if (document.readyState !== "loading") { updateBadges(); render(); }
