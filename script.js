@@ -2,7 +2,7 @@
    ROCÈA HERBAL TEA — APPLICATION SCRIPT
    ============================================================ */
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwu_nm2wK-JRlqoy0XCicwnrdjCb4AICjnJKbrtiuaNuuvoNybkCSKfiqE37MiPOsym1Q/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIHeRGwSQxcuiyNm6wfT79GQYgnuvgZ-PXoSogovvLZ7Q5Lfwr18jACwtC_CaQ2i17nA/exec";
 
 /* ============ FORMAT RUPIAH ============ */
 const rupiah = (n) => "Rp" + new Intl.NumberFormat("id-ID").format(Math.round(n));
